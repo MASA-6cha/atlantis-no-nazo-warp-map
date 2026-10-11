@@ -416,6 +416,23 @@ function drawFocusArrow(layer,e,forward){
  S('path',{d:'M-11,-3.8 L-5,0 L-11,3.8',fill:'none',stroke:'#f2fff9',
    'stroke-opacity':.83,'stroke-width':1.25,'stroke-linecap':'round','stroke-linejoin':'round'},a);
 }
+// Repeated chevrons make long highlighted connections readable even when the
+// destination is outside the currently zoomed map viewport.
+function drawGuideChevron(layer,e,forward,t){
+ const g=e.geometry,u=1-t;
+ const x=u*u*g.x1+2*u*t*g.cx+t*t*g.x2,y=u*u*g.y1+2*u*t*g.cy+t*t*g.y2;
+ const dx=(u*(g.cx-g.x1)+t*(g.x2-g.cx))*(forward?1:-1);
+ const dy=(u*(g.cy-g.y1)+t*(g.y2-g.cy))*(forward?1:-1);
+ const angle=Math.atan2(dy,dx)*180/Math.PI;
+ const type=forward?e.forward:(e.backward||e.forward);
+ const a=S('g',{class:'direction-chevron',transform:`translate(${x},${y}) rotate(${angle})`,
+  'data-from':forward?e.a:e.b,'data-to':forward?e.b:e.a},layer);
+ const d='M-8,-5 L0,0 L-8,5';
+ S('path',{d,fill:'none',stroke:'#061523','stroke-width':5.0,
+  'stroke-linecap':'round','stroke-linejoin':'round'},a);
+ S('path',{d,fill:'none',stroke:T[type].color,'stroke-width':2.6,
+  'stroke-linecap':'round','stroke-linejoin':'round'},a);
+}
 function updateVisual(){
  const arrowLayer=svg.querySelector('#direction-layer');
  arrowLayer.replaceChildren();
@@ -443,6 +460,16 @@ function updateVisual(){
   if(related||highlighted){
    if(showForward)drawFocusArrow(arrowLayer,e,true);
    if(showBackward)drawFocusArrow(arrowLayer,e,false);
+   const g=e.geometry,span=Math.hypot(g.x2-g.x1,g.y2-g.y1);
+   if(span>170){
+    if(showForward&&showBackward){
+     drawGuideChevron(arrowLayer,e,false,.32);
+     drawGuideChevron(arrowLayer,e,true,.68);
+    }else{
+     const count=Math.min(4,Math.max(1,Math.floor(span/190)));
+     for(let i=1;i<=count;i++)drawGuideChevron(arrowLayer,e,showForward,i/(count+1));
+    }
+   }
   }
  }
  for(const [n,el] of nodeElems){
